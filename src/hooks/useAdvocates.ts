@@ -13,9 +13,20 @@ export function useAdvocates() {
   } = useAdvocatesStore();
 
   const abortControllerRef = useRef<AbortController | null>(null);
+  const pendingRequestRef = useRef<string>("");
 
   const fetchAdvocates = useCallback(
     async (page: number, search: string) => {
+      // Create unique key for request deduplication
+      const requestKey = `${page}-${search}`;
+
+      // Skip if this exact request is already pending
+      if (pendingRequestRef.current === requestKey) {
+        return;
+      }
+
+      pendingRequestRef.current = requestKey;
+
       // Cancel previous request if it exists
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
@@ -60,6 +71,10 @@ export function useAdvocates() {
         setTotalPages(0);
       } finally {
         setIsLoading(false);
+        // Clear pending request after completion
+        if (pendingRequestRef.current === requestKey) {
+          pendingRequestRef.current = "";
+        }
       }
     },
     [setAdvocates, setTotalCount, setTotalPages, setIsLoading, setError]

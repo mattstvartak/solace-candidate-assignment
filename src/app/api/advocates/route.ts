@@ -22,20 +22,20 @@ export async function GET(request: Request) {
         )
       : undefined;
 
-    // Get paginated data with optional filtering
-    const data = await db
-      .select()
-      .from(advocates)
-      .where(searchConditions)
-      .limit(limit)
-      .offset(offset)
-      .orderBy(desc(advocates.createdAt));
-
-    // Get total count for pagination info
-    const [{ count }] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(advocates)
-      .where(searchConditions);
+    // Run data fetch and count queries in parallel for better performance
+    const [data, [{ count }]] = await Promise.all([
+      db
+        .select()
+        .from(advocates)
+        .where(searchConditions)
+        .limit(limit)
+        .offset(offset)
+        .orderBy(desc(advocates.createdAt)),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(advocates)
+        .where(searchConditions),
+    ]);
 
     return Response.json({
       data,
