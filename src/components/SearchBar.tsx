@@ -1,12 +1,11 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, X } from "lucide-react";
 import { useAdvocatesStore } from "@/store/advocatesStore";
-
-const ITEMS_PER_PAGE = 10;
+import { useAdvocates } from "@/hooks/useAdvocates";
 
 export function SearchBar() {
   const {
@@ -14,40 +13,28 @@ export function SearchBar() {
     totalCount,
     isLoading,
     advocates,
+    error,
     setSearchTerm,
     setCurrentPage,
-    setAdvocates,
-    setTotalCount,
-    setTotalPages,
-    setIsLoading,
     resetSearch,
   } = useAdvocatesStore();
 
+  const { fetchAdvocates } = useAdvocates();
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const fetchAdvocates = async (page: number, search: string) => {
-    setIsLoading(true);
-    console.log(`fetching advocates... page: ${page}, search: "${search}"`);
+  // Initial fetch on mount
+  useEffect(() => {
+    fetchAdvocates(1, searchTerm);
+  }, []); // Only run once on mount
 
-    try {
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: ITEMS_PER_PAGE.toString(),
-        ...(search && { search }),
-      });
-
-      const response = await fetch(`/api/advocates?${params}`);
-      const jsonResponse = await response.json();
-
-      setAdvocates(jsonResponse.data);
-      setTotalCount(jsonResponse.pagination.total);
-      setTotalPages(jsonResponse.pagination.totalPages);
-    } catch (error) {
-      console.error("Error fetching advocates:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -59,14 +46,12 @@ export function SearchBar() {
     }
 
     searchTimeoutRef.current = setTimeout(() => {
-      console.log("filtering advocates...");
       setCurrentPage(1);
       fetchAdvocates(1, value);
     }, 300);
   };
 
   const clearSearch = () => {
-    console.log(advocates);
     resetSearch();
     fetchAdvocates(1, "");
   };
@@ -96,15 +81,20 @@ export function SearchBar() {
             </Button>
           )}
         </div>
-        {searchTerm && (
+        {searchTerm && !error && (
           <p className="text-sm text-gray-600 mt-3 text-center">
             Found <span className="font-semibold text-[#285e50]">{totalCount}</span> advocate{totalCount !== 1 ? 's' : ''} matching "{searchTerm}"
+          </p>
+        )}
+        {error && (
+          <p className="text-sm text-red-600 mt-3 text-center">
+            {error}
           </p>
         )}
       </div>
 
       {/* No Results State */}
-      {hasNoResults && !isLoading && (
+      {hasNoResults && !isLoading && !error && (
         <div className="bg-white rounded-2xl shadow-lg p-12 text-center max-w-md mx-auto border border-gray-100 mb-8">
           <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <Search className="h-8 w-8 text-gray-400" />

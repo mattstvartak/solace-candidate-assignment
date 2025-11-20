@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +13,7 @@ import {
 import { ChevronLeft, ChevronRight, Award } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { useAdvocatesStore } from "@/store/advocatesStore";
+import { useAdvocates } from "@/hooks/useAdvocates";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -25,45 +25,14 @@ export function AdvocatesTable() {
     totalCount,
     totalPages,
     isLoading,
-    setAdvocates,
     setCurrentPage,
-    setTotalCount,
-    setTotalPages,
-    setIsLoading,
   } = useAdvocatesStore();
 
-  const fetchAdvocates = async (page: number, search: string) => {
-    setIsLoading(true);
-    console.log(`fetching advocates... page: ${page}, search: "${search}"`);
-
-    try {
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: ITEMS_PER_PAGE.toString(),
-        ...(search && { search }),
-      });
-
-      const response = await fetch(`/api/advocates?${params}`);
-      const jsonResponse = await response.json();
-
-      setAdvocates(jsonResponse.data);
-      setTotalCount(jsonResponse.pagination.total);
-      setTotalPages(jsonResponse.pagination.totalPages);
-    } catch (error) {
-      console.error("Error fetching advocates:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchAdvocates(1, searchTerm);
-  }, []);
+  const { fetchAdvocates } = useAdvocates();
 
   const goToPage = (page: number) => {
     setCurrentPage(page);
     fetchAdvocates(page, searchTerm);
-    // Smooth scroll to top of table
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -79,8 +48,17 @@ export function AdvocatesTable() {
     }
   };
 
-  const formatPhoneNumber = (phone: number) => {
+  const formatPhoneNumber = (phone: number | null | undefined): string => {
+    if (phone == null) {
+      return "N/A";
+    }
+
     const phoneStr = phone.toString();
+
+    if (phoneStr.length !== 10) {
+      return phoneStr; // Return as-is if not 10 digits
+    }
+
     return `(${phoneStr.slice(0, 3)}) ${phoneStr.slice(3, 6)}-${phoneStr.slice(6)}`;
   };
 
