@@ -1,9 +1,54 @@
 import db from "../../../db";
 import { advocates } from "../../../db/schema";
+import { sql, ilike, or, desc } from "drizzle-orm";
 
-export async function GET() {
-  // Uncomment this line to use a database
-  const data = await db.select().from(advocates);
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const page = parseInt(searchParams.get("page") || "1");
+  const limit = parseInt(searchParams.get("limit") || "100");
+  const search = searchParams.get("search") || "";
 
-  return Response.json({ data });
+  const offset = (page - 1) * limit;
+
+  try {
+    // Build search conditions if search term exists
+    const searchConditions = search
+      ? or(
+          ilike(advocates.firstName, `%${search}%`),
+          ilike(advocates.lastName, `%${search}%`),
+          ilike(advocates.city, `%${search}%`),
+          ilike(advocates.degree, `%${search}%`),
+          sql`${advocates.specialties}::text ILIKE ${`%${search}%`}`
+        )
+      : undefined;
+
+    // Get paginated data with optional filtering
+    const data = await db
+      .select()
+      .from(advocates)
+      .where(searchConditions)
+      .limit(limit)
+      .offset(offset)
+      .orderBy(desc(advocates.createdAt));
+
+    // Get total count for pagination info
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(advocates)
+      .where(searchConditions);
+
+    return Response.json({
+      data,
+      pagination: {
+        page,
+        limit,
+        total: count,
+        totalPages: Math.ceil(count / limit),
+        hasMore: offset + data.length < count,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching advocates:", error);
+    return Response.json({ error: "Failed to fetch advocates" }, { status: 500 });
+  }
 }

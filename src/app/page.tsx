@@ -1,102 +1,293 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Advocate } from "../db/schema";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Search, ChevronLeft, ChevronRight, X, Users, Award } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 
 export default function Home() {
   const [advocates, setAdvocates] = useState<Advocate[]>([]);
-  const [filteredAdvocates, setFilteredAdvocates] = useState<Advocate[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const itemsPerPage = 10;
+
+  const fetchAdvocates = async (page: number, search: string) => {
+    setIsLoading(true);
+    console.log(`fetching advocates... page: ${page}, search: "${search}"`);
+
+    try {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: itemsPerPage.toString(),
+        ...(search && { search }),
+      });
+
+      const response = await fetch(`/api/advocates?${params}`);
+      const jsonResponse = await response.json();
+
+      setAdvocates(jsonResponse.data);
+      setTotalCount(jsonResponse.pagination.total);
+      setTotalPages(jsonResponse.pagination.totalPages);
+    } catch (error) {
+      console.error("Error fetching advocates:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    console.log("fetching advocates...");
-    fetch("/api/advocates").then((response) => {
-      response.json().then((jsonResponse) => {
-        setAdvocates(jsonResponse.data);
-        setFilteredAdvocates(jsonResponse.data);
-      });
-    });
+    fetchAdvocates(1, searchTerm);
   }, []);
 
   const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const searchTerm = e.target.value;
+    const value = e.target.value;
+    setSearchTerm(value);
 
-    const searchTermElement = document.getElementById("search-term");
-    if (searchTermElement) {
-      searchTermElement.innerHTML = searchTerm;
+    // Debounce search
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
     }
 
-    console.log("filtering advocates...");
-    const filteredAdvocates = advocates.filter((advocate) => {
-      const specialtiesArray = Array.isArray(advocate.specialties)
-        ? advocate.specialties
-        : [];
-
-      return (
-        advocate.firstName.includes(searchTerm) ||
-        advocate.lastName.includes(searchTerm) ||
-        advocate.city.includes(searchTerm) ||
-        advocate.degree.includes(searchTerm) ||
-        specialtiesArray.some((s) => String(s).includes(searchTerm)) ||
-        advocate.yearsOfExperience.toString().includes(searchTerm)
-      );
-    });
-
-    setFilteredAdvocates(filteredAdvocates);
+    searchTimeoutRef.current = setTimeout(() => {
+      console.log("filtering advocates...");
+      setCurrentPage(1);
+      fetchAdvocates(1, value);
+    }, 300);
   };
 
-  const onClick = () => {
+  const clearSearch = () => {
     console.log(advocates);
-    setFilteredAdvocates(advocates);
+    setSearchTerm("");
+    setCurrentPage(1);
+    fetchAdvocates(1, "");
   };
+
+  const goToPage = (page: number) => {
+    setCurrentPage(page);
+    fetchAdvocates(page, searchTerm);
+    // Smooth scroll to top of table
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      goToPage(currentPage + 1);
+    }
+  };
+
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      goToPage(currentPage - 1);
+    }
+  };
+
+  const formatPhoneNumber = (phone: number) => {
+    const phoneStr = phone.toString();
+    return `(${phoneStr.slice(0, 3)}) ${phoneStr.slice(3, 6)}-${phoneStr.slice(6)}`;
+  };
+
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalCount);
 
   return (
-    <main style={{ margin: "24px" }}>
-      <h1>Solace Advocates</h1>
-      <br />
-      <br />
-      <div>
-        <p>Search</p>
-        <p>
-          Searching for: <span id="search-term"></span>
-        </p>
-        <input style={{ border: "1px solid black" }} onChange={onChange} />
-        <button onClick={onClick}>Reset Search</button>
+    <main className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-emerald-50">
+      <div className="container mx-auto px-4 py-8 md:py-12 max-w-7xl">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-[#285e50] rounded-2xl mb-6 shadow-lg">
+            <Users className="h-8 w-8 text-white" />
+          </div>
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 font-[family-name:var(--font-mollie-glaston)]">
+            Find Your <span className="text-[#285e50]">Solace</span> Advocate
+          </h1>
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed">
+            Connect with experienced mental health professionals who understand your needs.
+            Search by name, location, specialty, or qualifications.
+          </p>
+        </div>
+
+        {/* Search Bar */}
+        <div className="mb-8">
+          <div className="relative max-w-2xl mx-auto">
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+            <Input
+              type="text"
+              placeholder="Search by name, city, specialty, degree, or experience..."
+              value={searchTerm}
+              onChange={onChange}
+              className="pl-12 pr-12 h-14 text-base shadow-lg border-gray-200 rounded-xl focus-visible:ring-[#285e50]"
+            />
+            {searchTerm && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearSearch}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 h-10 w-10 p-0 hover:bg-gray-100 rounded-lg"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+          {searchTerm && (
+            <p className="text-sm text-gray-600 mt-3 text-center">
+              Found <span className="font-semibold text-[#285e50]">{totalCount}</span> advocate{totalCount !== 1 ? 's' : ''} matching "{searchTerm}"
+            </p>
+          )}
+        </div>
+
+        {/* Table */}
+        {advocates.length === 0 && !isLoading ? (
+          <div className="bg-white rounded-2xl shadow-lg p-12 text-center max-w-md mx-auto border border-gray-100">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Search className="h-8 w-8 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No advocates found</h3>
+            <p className="text-gray-600 mb-6">Try adjusting your search criteria or clear filters to see all advocates.</p>
+            <Button onClick={clearSearch} variant="outline" className="border-[#285e50] text-[#285e50] hover:bg-[#285e50] hover:text-white">
+              Clear Search
+            </Button>
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-50 hover:to-gray-100 border-b border-gray-200">
+                    <TableHead className="font-semibold text-gray-900 py-4">Name</TableHead>
+                    <TableHead className="font-semibold text-gray-900">Degree</TableHead>
+                    <TableHead className="font-semibold text-gray-900">City</TableHead>
+                    <TableHead className="font-semibold text-gray-900">Experience</TableHead>
+                    <TableHead className="font-semibold text-gray-900">Specialties</TableHead>
+                    <TableHead className="font-semibold text-gray-900">Phone</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-16">
+                        <div className="flex flex-col items-center justify-center gap-3">
+                          <Spinner className="text-[#285e50]" />
+                          <p className="text-gray-600 font-medium">Loading advocates...</p>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    advocates.map((advocate, index) => {
+                      const specialtiesArray = Array.isArray(advocate.specialties)
+                        ? advocate.specialties
+                        : [];
+
+                      return (
+                        <TableRow
+                          key={advocate.id}
+                          className="hover:bg-teal-50/50 transition-colors border-b border-gray-100 last:border-0"
+                          style={{ animationDelay: `${index * 50}ms` }}
+                        >
+                          <TableCell className="font-medium py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#285e50] to-teal-600 flex items-center justify-center text-white font-semibold text-sm shadow-sm">
+                                {advocate.firstName.charAt(0)}{advocate.lastName.charAt(0)}
+                              </div>
+                              <span className="text-gray-900">{advocate.firstName} {advocate.lastName}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary" className="bg-[#285e50]/10 text-[#285e50] hover:bg-[#285e50]/10 font-medium">
+                              {advocate.degree}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-gray-700">{advocate.city}</TableCell>
+                          <TableCell className="text-gray-700">
+                            <div className="flex items-center gap-1.5">
+                              <Award className="h-3.5 w-3.5 text-amber-500" />
+                              <span><span className="font-semibold text-gray-900">{advocate.yearsOfExperience}</span> years</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1.5 max-w-xs">
+                              {specialtiesArray.slice(0, 2).map((specialty, index) => (
+                                <Badge
+                                  key={index}
+                                  className="text-xs font-medium"
+                                >
+                                  {String(specialty)}
+                                </Badge>
+                              ))}
+                              {specialtiesArray.length > 2 && (
+                                <Badge variant="secondary" className="text-xs font-medium">
+                                  +{specialtiesArray.length - 2}
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-gray-700 font-mono text-sm">
+                            {formatPhoneNumber(advocate.phoneNumber)}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Pagination Controls */}
+            {!isLoading && advocates.length > 0 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-5 border-t bg-gray-50">
+                <div className="text-sm text-gray-600">
+                  Showing <span className="font-semibold text-gray-900">{startIndex + 1}</span> to{" "}
+                  <span className="font-semibold text-gray-900">{endIndex}</span> of{" "}
+                  <span className="font-semibold text-gray-900">{totalCount}</span> advocates
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={goToPreviousPage}
+                    disabled={currentPage === 1}
+                    className="gap-1.5 border-gray-300 hover:bg-gray-100 hover:border-gray-400 disabled:opacity-50"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous
+                  </Button>
+                  <div className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-200 rounded-md">
+                    <span className="text-sm text-gray-700">
+                      Page <span className="font-semibold text-[#285e50]">{currentPage}</span> of{" "}
+                      <span className="font-semibold">{totalPages}</span>
+                    </span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={goToNextPage}
+                    disabled={currentPage === totalPages}
+                    className="gap-1.5 border-gray-300 hover:bg-gray-100 hover:border-gray-400 disabled:opacity-50"
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
-      <br />
-      <br />
-      <table>
-        <thead>
-          <tr>
-            <th>First Name</th>
-            <th>Last Name</th>
-            <th>City</th>
-            <th>Degree</th>
-            <th>Specialties</th>
-            <th>Years of Experience</th>
-            <th>Phone Number</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredAdvocates.map((advocate) => {
-            return (
-              <tr>
-                <td>{advocate.firstName}</td>
-                <td>{advocate.lastName}</td>
-                <td>{advocate.city}</td>
-                <td>{advocate.degree}</td>
-                <td>
-                  {Array.isArray(advocate.specialties) &&
-                    advocate.specialties.map((s, index) => (
-                      <div key={index}>{String(s)}</div>
-                    ))}
-                </td>
-                <td>{advocate.yearsOfExperience}</td>
-                <td>{advocate.phoneNumber}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
     </main>
   );
 }
