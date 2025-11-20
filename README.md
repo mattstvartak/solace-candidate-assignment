@@ -36,6 +36,12 @@ npx drizzle-kit push
 
 4. Seed the database
 
+Linux/Mac:
 ```bash
 curl -X POST http://localhost:3000/api/seed
+```
+
+Windows:
+```bash
+Invoke-WebRequest -Uri http://localhost:3000/api/seed -Method POST
 ```

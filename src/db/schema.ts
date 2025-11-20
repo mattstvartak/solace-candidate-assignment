@@ -21,4 +21,6 @@ const advocates = pgTable("advocates", {
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
+export type Advocate = typeof advocates.$inferSelect;
+
 export { advocates };
