@@ -16,9 +16,9 @@ export function useAdvocates() {
   const pendingRequestRef = useRef<string>("");
 
   const fetchAdvocates = useCallback(
-    async (page: number, search: string) => {
+    async (page: number, search: string, degrees: string[] = [], specialties: string[] = []) => {
       // Create unique key for request deduplication
-      const requestKey = `${page}-${search}`;
+      const requestKey = `${page}-${search}-${degrees.join(",")}-${specialties.join(",")}`;
 
       // Skip if this exact request is already pending
       if (pendingRequestRef.current === requestKey) {
@@ -43,6 +43,16 @@ export function useAdvocates() {
           page: page.toString(),
           limit: ITEMS_PER_PAGE.toString(),
           ...(search && { search }),
+        });
+
+        // Add degree filters
+        degrees.forEach((degree) => {
+          params.append("degrees", degree);
+        });
+
+        // Add specialty filters
+        specialties.forEach((specialty) => {
+          params.append("specialties", specialty);
         });
 
         const response = await fetch(`/api/advocates?${params}`, {

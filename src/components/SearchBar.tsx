@@ -1,30 +1,54 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, X } from "lucide-react";
 import { useAdvocatesStore } from "@/store/advocatesStore";
 import { useAdvocates } from "@/hooks/useAdvocates";
+import { MultiSelect } from "@/components/ui/multi-select";
 
 export function SearchBar() {
   const {
     searchTerm,
+    selectedDegrees,
+    selectedSpecialties,
     totalCount,
     isLoading,
     advocates,
     error,
     setSearchTerm,
+    setSelectedDegrees,
+    setSelectedSpecialties,
     setCurrentPage,
-    resetSearch,
+    clearFilters,
   } = useAdvocatesStore();
 
   const { fetchAdvocates } = useAdvocates();
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [degreeOptions, setDegreeOptions] = useState<string[]>([]);
+  const [specialtyOptions, setSpecialtyOptions] = useState<string[]>([]);
+
+  // Fetch filter options on mount
+  useEffect(() => {
+    const fetchFilterOptions = async () => {
+      try {
+        const response = await fetch("/api/advocates/filters");
+        if (response.ok) {
+          const data = await response.json();
+          setDegreeOptions(data.degrees || []);
+          setSpecialtyOptions(data.specialties || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch filter options:", error);
+      }
+    };
+    fetchFilterOptions();
+  }, []);
 
   // Initial fetch on mount
   useEffect(() => {
-    fetchAdvocates(1, searchTerm);
+    fetchAdvocates(1, searchTerm, selectedDegrees, selectedSpecialties);
   }, []); // Only run once on mount
 
   // Cleanup timeout on unmount
@@ -47,13 +71,25 @@ export function SearchBar() {
 
     searchTimeoutRef.current = setTimeout(() => {
       setCurrentPage(1);
-      fetchAdvocates(1, value);
+      fetchAdvocates(1, value, selectedDegrees, selectedSpecialties);
     }, 300);
   };
 
-  const clearSearch = () => {
-    resetSearch();
-    fetchAdvocates(1, "");
+  const handleDegreeChange = (values: string[]) => {
+    setSelectedDegrees(values);
+    setCurrentPage(1);
+    fetchAdvocates(1, searchTerm, values, selectedSpecialties);
+  };
+
+  const handleSpecialtyChange = (values: string[]) => {
+    setSelectedSpecialties(values);
+    setCurrentPage(1);
+    fetchAdvocates(1, searchTerm, selectedDegrees, values);
+  };
+
+  const handleClearFilters = () => {
+    clearFilters();
+    fetchAdvocates(1, "", [], []);
   };
 
   const hasNoResults = advocates.length === 0;
@@ -61,7 +97,8 @@ export function SearchBar() {
   return (
     <>
       <div className="mb-8">
-        <div className="relative max-w-2xl mx-auto">
+        {/* Search Bar */}
+        <div className="relative max-w-2xl mx-auto mb-4">
           <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
           <Input
             type="text"
@@ -74,13 +111,48 @@ export function SearchBar() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={clearSearch}
+              onClick={() => {
+                setSearchTerm("");
+                setCurrentPage(1);
+                fetchAdvocates(1, "", selectedDegrees, selectedSpecialties);
+              }}
               className="absolute right-2 top-1/2 transform -translate-y-1/2 h-10 w-10 p-0 hover:bg-gray-100 rounded-lg"
             >
               <X className="h-4 w-4" />
             </Button>
           )}
         </div>
+
+        {/* Filter Dropdowns */}
+        <div className="flex flex-wrap gap-3 max-w-2xl mx-auto mb-4">
+          <div className="flex-1 min-w-[200px]">
+            <MultiSelect
+              options={degreeOptions.map((degree) => ({
+                label: degree,
+                value: degree
+              }))}
+              onValueChange={handleDegreeChange}
+              defaultValue={selectedDegrees}
+              placeholder="Filter by Degree"
+              maxCount={0}
+              className="w-full"
+            />
+          </div>
+          <div className="flex-1 min-w-[200px]">
+            <MultiSelect
+              options={specialtyOptions.map((specialty) => ({
+                label: specialty,
+                value: specialty
+              }))}
+              onValueChange={handleSpecialtyChange}
+              defaultValue={selectedSpecialties}
+              placeholder="Filter by Specialties"
+              maxCount={0}
+              className="w-full"
+            />
+          </div>
+        </div>
+
         {searchTerm && !error && (
           <p className="text-sm text-gray-600 mt-3 text-center">
             Found <span className="font-semibold text-[#285e50]">{totalCount}</span> advocate{totalCount !== 1 ? 's' : ''} matching "{searchTerm}"
@@ -104,11 +176,11 @@ export function SearchBar() {
             Try adjusting your search criteria or clear filters to see all advocates.
           </p>
           <Button
-            onClick={clearSearch}
+            onClick={handleClearFilters}
             variant="outline"
             className="border-[#285e50] text-[#285e50] hover:bg-[#285e50] hover:text-white"
           >
-            Clear Search
+            Clear Filters
           </Button>
         </div>
       )}
