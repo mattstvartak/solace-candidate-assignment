@@ -1,6 +1,6 @@
 import db from "../../../db";
 import { advocates } from "../../../db/schema";
-import { sql, ilike, or, and, inArray } from "drizzle-orm";
+import { sql, ilike, or, and, inArray, asc, desc } from "drizzle-orm";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -9,6 +9,8 @@ export async function GET(request: Request) {
   const search = searchParams.get("search") || "";
   const degrees = searchParams.getAll("degrees");
   const specialties = searchParams.getAll("specialties");
+  const sortField = searchParams.get("sortField");
+  const sortDirection = searchParams.get("sortDirection") || "asc";
 
   const offset = (page - 1) * limit;
 
@@ -44,6 +46,24 @@ export async function GET(request: Request) {
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
+    // Determine sort order
+    const getSortOrder = () => {
+      const direction = sortDirection === "desc" ? desc : asc;
+
+      switch (sortField) {
+        case "name":
+          return [direction(advocates.lastName), direction(advocates.firstName)];
+        case "degree":
+          return [direction(advocates.degree), asc(advocates.lastName), asc(advocates.firstName)];
+        case "city":
+          return [direction(advocates.city), asc(advocates.lastName), asc(advocates.firstName)];
+        case "experience":
+          return [direction(advocates.yearsOfExperience), asc(advocates.lastName), asc(advocates.firstName)];
+        default:
+          return [asc(advocates.lastName), asc(advocates.firstName)];
+      }
+    };
+
     // Run data fetch and count queries in parallel for better performance
     const [data, [{ count }]] = await Promise.all([
       db
@@ -52,7 +72,7 @@ export async function GET(request: Request) {
         .where(whereClause)
         .limit(limit)
         .offset(offset)
-        .orderBy(advocates.lastName, advocates.firstName),
+        .orderBy(...getSortOrder()),
       db
         .select({ count: sql<number>`count(*)::int` })
         .from(advocates)

@@ -17,6 +17,8 @@ export function SearchBar() {
     isLoading,
     advocates,
     error,
+    sortField,
+    sortDirection,
     setSearchTerm,
     setSelectedDegrees,
     setSelectedSpecialties,
@@ -48,7 +50,7 @@ export function SearchBar() {
 
   // Initial fetch on mount
   useEffect(() => {
-    fetchAdvocates(1, searchTerm, selectedDegrees, selectedSpecialties);
+    fetchAdvocates(1, searchTerm, selectedDegrees, selectedSpecialties, sortField, sortDirection);
   }, []); // Only run once on mount
 
   // Cleanup timeout on unmount
@@ -71,25 +73,25 @@ export function SearchBar() {
 
     searchTimeoutRef.current = setTimeout(() => {
       setCurrentPage(1);
-      fetchAdvocates(1, value, selectedDegrees, selectedSpecialties);
+      fetchAdvocates(1, value, selectedDegrees, selectedSpecialties, sortField, sortDirection);
     }, 300);
   };
 
   const handleDegreeChange = (values: string[]) => {
     setSelectedDegrees(values);
     setCurrentPage(1);
-    fetchAdvocates(1, searchTerm, values, selectedSpecialties);
+    fetchAdvocates(1, searchTerm, values, selectedSpecialties, sortField, sortDirection);
   };
 
   const handleSpecialtyChange = (values: string[]) => {
     setSelectedSpecialties(values);
     setCurrentPage(1);
-    fetchAdvocates(1, searchTerm, selectedDegrees, values);
+    fetchAdvocates(1, searchTerm, selectedDegrees, values, sortField, sortDirection);
   };
 
   const handleClearFilters = () => {
     clearFilters();
-    fetchAdvocates(1, "", [], []);
+    fetchAdvocates(1, "", [], [], sortField, sortDirection);
   };
 
   const hasNoResults = advocates.length === 0;
@@ -114,7 +116,7 @@ export function SearchBar() {
               onClick={() => {
                 setSearchTerm("");
                 setCurrentPage(1);
-                fetchAdvocates(1, "", selectedDegrees, selectedSpecialties);
+                fetchAdvocates(1, "", selectedDegrees, selectedSpecialties, sortField, sortDirection);
               }}
               className="absolute right-2 top-1/2 transform -translate-y-1/2 h-10 w-10 p-0 hover:bg-gray-100 rounded-lg"
             >
@@ -141,13 +143,13 @@ export function SearchBar() {
           <div className="flex-1 min-w-[200px]">
             <MultiSelect
               options={specialtyOptions.map((specialty) => ({
-                label: specialty,
+                label: specialty.length > 28 ? specialty.substring(0, 28) + '...' : specialty,
                 value: specialty
               }))}
               onValueChange={handleSpecialtyChange}
               defaultValue={selectedSpecialties}
               placeholder="Filter by Specialties"
-              maxCount={0}
+              maxCount={1}
               className="w-full"
             />
           </div>

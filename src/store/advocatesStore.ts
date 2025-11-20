@@ -1,6 +1,9 @@
 import { create } from "zustand";
 import { Advocate } from "@/db/schema";
 
+export type SortField = "name" | "degree" | "city" | "experience";
+export type SortDirection = "asc" | "desc";
+
 interface AdvocatesState {
   advocates: Advocate[];
   searchTerm: string;
@@ -11,6 +14,8 @@ interface AdvocatesState {
   totalPages: number;
   isLoading: boolean;
   error: string | null;
+  sortField: SortField | null;
+  sortDirection: SortDirection;
   setAdvocates: (advocates: Advocate[]) => void;
   setSearchTerm: (term: string) => void;
   setSelectedDegrees: (degrees: string[]) => void;
@@ -20,6 +25,7 @@ interface AdvocatesState {
   setTotalPages: (pages: number) => void;
   setIsLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
+  setSorting: (field: SortField | null, direction: SortDirection) => void;
   resetSearch: () => void;
   clearFilters: () => void;
 }
@@ -34,6 +40,8 @@ export const useAdvocatesStore = create<AdvocatesState>((set) => ({
   totalPages: 0,
   isLoading: false,
   error: null,
+  sortField: null,
+  sortDirection: "asc",
   setAdvocates: (advocates) => set({ advocates }),
   setSearchTerm: (term) => set({ searchTerm: term }),
   setSelectedDegrees: (degrees) => set({ selectedDegrees: degrees }),
@@ -43,6 +51,7 @@ export const useAdvocatesStore = create<AdvocatesState>((set) => ({
   setTotalPages: (pages) => set({ totalPages: pages }),
   setIsLoading: (loading) => set({ isLoading: loading }),
   setError: (error) => set({ error }),
+  setSorting: (field, direction) => set({ sortField: field, sortDirection: direction }),
   resetSearch: () => set({ searchTerm: "", currentPage: 1 }),
   clearFilters: () => set({ searchTerm: "", selectedDegrees: [], selectedSpecialties: [], currentPage: 1 }),
 }));

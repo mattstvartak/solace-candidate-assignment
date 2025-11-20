@@ -50,9 +50,9 @@ export interface AnimationConfig {
 const multiSelectVariants = cva("m-1 transition-all duration-300 ease-in-out", {
 	variants: {
 		variant: {
-			default: "border-foreground/10 text-foreground bg-card hover:bg-card/80",
+			default: "border-foreground/10 text-foreground bg-card hover:bg-gray-200 hover:text-gray-900",
 			secondary:
-				"border-foreground/10 bg-secondary text-secondary-foreground hover:bg-secondary/80",
+				"border-foreground/10 bg-secondary text-secondary-foreground hover:bg-gray-300 hover:text-gray-900",
 			destructive:
 				"border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
 			inverted: "inverted",
@@ -912,7 +912,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 																}
 															}}
 															aria-label={`Remove ${option.label} from selection`}
-															className="ml-2 h-4 w-4 cursor-pointer hover:bg-white/20 rounded-sm p-0.5 -m-0.5 focus:outline-none focus:ring-1 focus:ring-white/50">
+															className="ml-2 h-4 w-4 cursor-pointer hover:bg-white/20 rounded-sm p-0.5 -m-0.5 focus:outline-none focus:ring-1 focus:ring-white/50 flex items-center justify-center">
 															<XCircle
 																className={cn(
 																	"h-3 w-3",

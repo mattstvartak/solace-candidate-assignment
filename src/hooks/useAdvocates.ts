@@ -1,5 +1,5 @@
 import { useCallback, useRef } from "react";
-import { useAdvocatesStore } from "@/store/advocatesStore";
+import { useAdvocatesStore, type SortField, type SortDirection } from "@/store/advocatesStore";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -16,9 +16,16 @@ export function useAdvocates() {
   const pendingRequestRef = useRef<string>("");
 
   const fetchAdvocates = useCallback(
-    async (page: number, search: string, degrees: string[] = [], specialties: string[] = []) => {
+    async (
+      page: number,
+      search: string,
+      degrees: string[] = [],
+      specialties: string[] = [],
+      sortField: SortField | null = null,
+      sortDirection: SortDirection = "asc"
+    ) => {
       // Create unique key for request deduplication
-      const requestKey = `${page}-${search}-${degrees.join(",")}-${specialties.join(",")}`;
+      const requestKey = `${page}-${search}-${degrees.join(",")}-${specialties.join(",")}-${sortField}-${sortDirection}`;
 
       // Skip if this exact request is already pending
       if (pendingRequestRef.current === requestKey) {
@@ -43,6 +50,7 @@ export function useAdvocates() {
           page: page.toString(),
           limit: ITEMS_PER_PAGE.toString(),
           ...(search && { search }),
+          ...(sortField && { sortField, sortDirection }),
         });
 
         // Add degree filters

@@ -10,11 +10,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ChevronLeft, ChevronRight, Award } from "lucide-react";
+import { ChevronLeft, ChevronRight, Award, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
-import { useAdvocatesStore } from "@/store/advocatesStore";
+import { useAdvocatesStore, type SortField } from "@/store/advocatesStore";
 import { useAdvocates } from "@/hooks/useAdvocates";
-import { memo, useMemo } from "react";
+import { memo, useMemo, useState } from "react";
 import type { Advocate } from "@/db/schema";
 
 const ITEMS_PER_PAGE = 10;
@@ -23,12 +23,15 @@ const ITEMS_PER_PAGE = 10;
 const AdvocateRow = memo(({
   advocate,
   index,
-  selectedSpecialties
+  selectedSpecialties,
+  onSpecialtyClick
 }: {
   advocate: Advocate;
   index: number;
   selectedSpecialties: string[];
+  onSpecialtyClick: (specialty: string) => void;
 }) => {
+  const [showAllSpecialties, setShowAllSpecialties] = useState(false);
   const specialtiesArray = Array.isArray(advocate.specialties)
     ? advocate.specialties
     : [];
@@ -91,24 +94,38 @@ const AdvocateRow = memo(({
       </TableCell>
       <TableCell className="pl-6">
         <div className="flex flex-wrap gap-1.5 max-w-xs">
-          {sortedSpecialties.slice(0, 2).map((specialty, idx) => {
+          {(showAllSpecialties ? sortedSpecialties : sortedSpecialties.slice(0, 2)).map((specialty, idx) => {
             const isFiltered = selectedSpecialties.includes(specialty);
             return (
               <Badge
                 key={idx}
-                className={`text-xs font-medium ${
+                onClick={() => onSpecialtyClick(specialty)}
+                className={`text-xs font-medium cursor-pointer transition-all ${
                   isFiltered
-                    ? 'bg-[#285e50] text-white hover:bg-[#285e50]'
-                    : ''
+                    ? 'bg-[#285e50] text-white hover:bg-[#1f4a3d] hover:text-white'
+                    : 'hover:bg-[#285e50]/20 hover:text-[#285e50]'
                 }`}
               >
                 {specialty}
               </Badge>
             );
           })}
-          {sortedSpecialties.length > 2 && (
-            <Badge variant="secondary" className="text-xs font-medium">
+          {sortedSpecialties.length > 2 && !showAllSpecialties && (
+            <Badge
+              variant="secondary"
+              className="text-xs font-medium cursor-pointer hover:bg-gray-300 transition-all"
+              onClick={() => setShowAllSpecialties(true)}
+            >
               +{sortedSpecialties.length - 2}
+            </Badge>
+          )}
+          {showAllSpecialties && sortedSpecialties.length > 2 && (
+            <Badge
+              variant="secondary"
+              className="text-xs font-medium cursor-pointer hover:bg-gray-300 transition-all"
+              onClick={() => setShowAllSpecialties(false)}
+            >
+              Show less
             </Badge>
           )}
         </div>
@@ -132,14 +149,37 @@ export function AdvocatesTable() {
     totalCount,
     totalPages,
     isLoading,
+    sortField,
+    sortDirection,
     setCurrentPage,
+    setSelectedSpecialties,
+    setSorting,
   } = useAdvocatesStore();
 
   const { fetchAdvocates } = useAdvocates();
 
+  const handleSort = (field: SortField) => {
+    // Toggle direction if clicking the same field, otherwise default to asc
+    const newDirection = sortField === field && sortDirection === "asc" ? "desc" : "asc";
+    setSorting(field, newDirection);
+    setCurrentPage(1);
+    fetchAdvocates(1, searchTerm, selectedDegrees, selectedSpecialties, field, newDirection);
+  };
+
+  const handleSpecialtyClick = (specialty: string) => {
+    // Toggle specialty filter
+    const newSpecialties = selectedSpecialties.includes(specialty)
+      ? selectedSpecialties.filter(s => s !== specialty)
+      : [...selectedSpecialties, specialty];
+
+    setSelectedSpecialties(newSpecialties);
+    setCurrentPage(1);
+    fetchAdvocates(1, searchTerm, selectedDegrees, newSpecialties, sortField, sortDirection);
+  };
+
   const goToPage = (page: number) => {
     setCurrentPage(page);
-    fetchAdvocates(page, searchTerm, selectedDegrees, selectedSpecialties);
+    fetchAdvocates(page, searchTerm, selectedDegrees, selectedSpecialties, sortField, sortDirection);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -153,6 +193,23 @@ export function AdvocatesTable() {
     if (currentPage > 1) {
       goToPage(currentPage - 1);
     }
+  };
+
+  const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => {
+    const isActive = sortField === field;
+    const SortIcon = isActive ? (sortDirection === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+
+    return (
+      <TableHead
+        className="font-semibold text-gray-900 pl-6 cursor-pointer hover:bg-gray-200 transition-colors"
+        onClick={() => handleSort(field)}
+      >
+        <div className="flex items-center gap-2">
+          {children}
+          <SortIcon className={`h-4 w-4 ${isActive ? 'text-[#285e50]' : 'text-gray-400'}`} />
+        </div>
+      </TableHead>
+    );
   };
 
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -177,10 +234,10 @@ export function AdvocatesTable() {
               </colgroup>
               <TableHeader>
                 <TableRow className="bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-50 hover:to-gray-100 border-b border-gray-200">
-                  <TableHead className="font-semibold text-gray-900 py-4 pl-6">Name</TableHead>
-                  <TableHead className="font-semibold text-gray-900 pl-6">Degree</TableHead>
-                  <TableHead className="font-semibold text-gray-900 pl-6">City</TableHead>
-                  <TableHead className="font-semibold text-gray-900 pl-6">Experience</TableHead>
+                  <SortableHeader field="name">Name</SortableHeader>
+                  <SortableHeader field="degree">Degree</SortableHeader>
+                  <SortableHeader field="city">City</SortableHeader>
+                  <SortableHeader field="experience">Experience</SortableHeader>
                   <TableHead className="font-semibold text-gray-900 pl-6">Specialties</TableHead>
                   <TableHead className="font-semibold text-gray-900 pl-6">Phone</TableHead>
                 </TableRow>
@@ -202,6 +259,7 @@ export function AdvocatesTable() {
                       advocate={advocate}
                       index={index}
                       selectedSpecialties={selectedSpecialties}
+                      onSpecialtyClick={handleSpecialtyClick}
                     />
                   ))
                 )}
