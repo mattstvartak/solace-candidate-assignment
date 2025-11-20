@@ -169,15 +169,15 @@ export default function Home() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-50 hover:to-gray-100 border-b border-gray-200">
-                    <TableHead className="font-semibold text-gray-900 py-4">Name</TableHead>
-                    <TableHead className="font-semibold text-gray-900">Degree</TableHead>
-                    <TableHead className="font-semibold text-gray-900">City</TableHead>
-                    <TableHead className="font-semibold text-gray-900">Experience</TableHead>
-                    <TableHead className="font-semibold text-gray-900">Specialties</TableHead>
-                    <TableHead className="font-semibold text-gray-900">Phone</TableHead>
+                    <TableHead className="font-semibold text-gray-900 py-4 pl-6">Name</TableHead>
+                    <TableHead className="font-semibold text-gray-900 pl-6">Degree</TableHead>
+                    <TableHead className="font-semibold text-gray-900 pl-6">City</TableHead>
+                    <TableHead className="font-semibold text-gray-900 pl-6">Experience</TableHead>
+                    <TableHead className="font-semibold text-gray-900 pl-6">Specialties</TableHead>
+                    <TableHead className="font-semibold text-gray-900 pl-6">Phone</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody className="pl-6">
                   {isLoading ? (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center py-16">
@@ -199,27 +199,22 @@ export default function Home() {
                           className="hover:bg-teal-50/50 transition-colors border-b border-gray-100 last:border-0"
                           style={{ animationDelay: `${index * 50}ms` }}
                         >
-                          <TableCell className="font-medium py-4">
-                            <div className="flex items-center gap-3">
-                              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#285e50] to-teal-600 flex items-center justify-center text-white font-semibold text-sm shadow-sm">
-                                {advocate.firstName.charAt(0)}{advocate.lastName.charAt(0)}
-                              </div>
-                              <span className="text-gray-900">{advocate.firstName} {advocate.lastName}</span>
-                            </div>
+                          <TableCell className="font-medium py-4 text-gray-900 pl-6">
+                            {advocate.firstName} {advocate.lastName}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="pl-6">
                             <Badge variant="secondary" className="bg-[#285e50]/10 text-[#285e50] hover:bg-[#285e50]/10 font-medium">
                               {advocate.degree}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-gray-700">{advocate.city}</TableCell>
-                          <TableCell className="text-gray-700">
+                          <TableCell className="text-gray-700 pl-6">{advocate.city}</TableCell>
+                          <TableCell className="text-gray-700 pl-6">
                             <div className="flex items-center gap-1.5">
                               <Award className="h-3.5 w-3.5 text-amber-500" />
                               <span><span className="font-semibold text-gray-900">{advocate.yearsOfExperience}</span> years</span>
                             </div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="pl-6">
                             <div className="flex flex-wrap gap-1.5 max-w-xs">
                               {specialtiesArray.slice(0, 2).map((specialty, index) => (
                                 <Badge
@@ -236,7 +231,7 @@ export default function Home() {
                               )}
                             </div>
                           </TableCell>
-                          <TableCell className="text-gray-700 font-mono text-sm">
+                          <TableCell className="text-gray-700 font-mono text-sm pl-6">
                             {formatPhoneNumber(advocate.phoneNumber)}
                           </TableCell>
                         </TableRow>
